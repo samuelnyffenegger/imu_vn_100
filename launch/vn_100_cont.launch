@@ -48,5 +48,6 @@
         <param name="vpe/heading_mode" type="int" value="$(arg vpe_heading_mode)"/>
         <param name="vpe/filtering_mode" type="int" value="$(arg vpe_filtering_mode)"/>
         <param name="vpe/tuning_mode" type="int" value="$(arg vpe_tuning_mode)"/>
+        <rosparam command="load" file="$(find imu_vn_100)/config/config.yaml" />
     </node>
 </launch>

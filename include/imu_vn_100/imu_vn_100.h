@@ -27,6 +27,12 @@
 
 #include "vn100.h"
 
+#include "cosmo_ros/cosmo_ros.hpp"
+#include "mabi_base_msgs/MabiBaseIMUStates.h"
+#include "mabi_base_sensor/MabiBaseIMUState.hpp"
+#include "mabi_base_sensor_ros/ConversionTraits.hpp"
+
+
 namespace imu_vn_100 {
 
 namespace du = diagnostic_updater;
@@ -62,6 +68,9 @@ struct DiagnosedPublisher {
  */
 class ImuVn100 {
  public:
+  using IMUStateShm = mabi_base_sensor::MabiBaseIMUState;
+  using IMUStateRos = mabi_base_msgs::MabiBaseIMUState;
+
   static constexpr int kBaseImuRate = 800;
   static constexpr int kDefaultImuRate = 100;
   static constexpr int kDefaultSyncOutRate = 20;
@@ -141,6 +150,9 @@ class ImuVn100 {
 
   du::Updater updater_;
   DiagnosedPublisher pd_imu_, pd_mag_, pd_pres_, pd_temp_, pd_rpy_;
+
+  cosmo_ros::PublisherRosPtr<IMUStateShm, IMUStateRos, mabi_base_sensor_ros::ConversionTraits> pub_;
+  IMUStateShm IMUState_;
 
   void FixImuRate();
   void LoadParameters();

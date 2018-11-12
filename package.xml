@@ -14,7 +14,10 @@
   <depend>diagnostic_updater</depend>
   <depend>roscpp</depend>
   <depend>sensor_msgs</depend>
-
+  <depend>cosmo_ros</depend>
+  <depend>mabi_base_msgs</depend>
+  <depend>mabi_base_sensor</depend>
+  <depend>mabi_base_sensor_ros</depend>
 
   <export>
     <!-- Other tools can request additional information be placed here -->

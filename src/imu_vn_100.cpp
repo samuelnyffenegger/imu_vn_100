@@ -170,6 +170,15 @@ void ImuVn100::CreateDiagnosedPublishers() {
   if (enable_rpy_) {
       pd_rpy_.Create<Vector3Stamped>(pnh_, "rpy", updater_, imu_rate_double_);
   }
+
+
+  // COSMO publishers
+  auto optionsPublisher = std::make_shared<cosmo_ros::PublisherRosOptions>("mabi_base_IMU_readings", pnh_);
+  optionsPublisher->autoPublishRos_ = true;
+  optionsPublisher->rosQueueSize_ = 1u;
+  optionsPublisher->rosLatch_ = false;
+  pub_ = cosmo_ros::advertiseShmRos<IMUStateShm, IMUStateRos, mabi_base_sensor_ros::ConversionTraits> ("mabi_base_IMU_readings", optionsPublisher);
+
 }
 
 void ImuVn100::Initialize() {
@@ -456,6 +465,16 @@ void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
   if (binary_output_) {
     RosQuaternionFromVnQuaternion(imu_msg.orientation, data.quaternion);
   }
+  IMUState_.linear_acceleration_.x  = imu_msg.linear_acceleration.x;
+  IMUState_.linear_acceleration_.y  = imu_msg.linear_acceleration.y;
+  IMUState_.linear_acceleration_.z  = imu_msg.linear_acceleration.z;
+  IMUState_.angular_velocity_.x     = imu_msg.angular_velocity.x;
+  IMUState_.angular_velocity_.y     = imu_msg.angular_velocity.y;
+  IMUState_.angular_velocity_.z     = imu_msg.angular_velocity.z;
+  IMUState_.orientation_.x          = imu_msg.orientation.x;
+  IMUState_.orientation_.y          = imu_msg.orientation.y;
+  IMUState_.orientation_.z          = imu_msg.orientation.z;
+  IMUState_.orientation_.w          = imu_msg.orientation.w;
   pd_imu_.Publish(imu_msg);
 
   if (enable_rpy_) {
@@ -464,6 +483,9 @@ void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
     rpy_msg.vector.z = data.ypr.yaw * M_PI/180.0;
     rpy_msg.vector.y = data.ypr.pitch * M_PI/180.0;
     rpy_msg.vector.x = data.ypr.roll * M_PI/180.0;
+    IMUState_.rpy_.x = rpy_msg.vector.x;
+    IMUState_.rpy_.y = rpy_msg.vector.y;
+    IMUState_.rpy_.z = rpy_msg.vector.z; 
     pd_rpy_.Publish(rpy_msg);
   }
 
@@ -471,6 +493,9 @@ void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
     sensor_msgs::MagneticField mag_msg;
     mag_msg.header = imu_msg.header;
     RosVector3FromVnVector3(mag_msg.magnetic_field, data.magnetic);
+    IMUState_.magnetic_field_.x = mag_msg.magnetic_field.x;
+    IMUState_.magnetic_field_.y = mag_msg.magnetic_field.y;
+    IMUState_.magnetic_field_.z = mag_msg.magnetic_field.z;   
     pd_mag_.Publish(mag_msg);
   }
 
@@ -478,6 +503,7 @@ void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
     sensor_msgs::FluidPressure pres_msg;
     pres_msg.header = imu_msg.header;
     pres_msg.fluid_pressure = data.pressure;
+    IMUState_.fluid_pressure_ = data.pressure;
     pd_pres_.Publish(pres_msg);
   }
 
@@ -485,8 +511,14 @@ void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
     sensor_msgs::Temperature temp_msg;
     temp_msg.header = imu_msg.header;
     temp_msg.temperature = data.temperature;
+    IMUState_.temperature_ = data.temperature;   
     pd_temp_.Publish(temp_msg);
   }
+
+  // COSMO publishers
+  pub_->publish(IMUState_);
+  pub_->sendRos();
+
 
   sync_info_.Update(data.syncInCnt, imu_msg.header.stamp);
 
