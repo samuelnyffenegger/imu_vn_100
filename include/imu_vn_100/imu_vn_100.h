@@ -28,8 +28,8 @@
 #include "vn100.h"
 
 #include "cosmo_ros/cosmo_ros.hpp"
-#include "mabi_base_msgs/MabiBaseIMUStates.h"
-#include "mabi_base_sensor/MabiBaseIMUState.hpp"
+#include "mabi_base_msgs/MabiBaseSensorReading.h"
+#include "mabi_base_sensor/MabiBaseSensorReading.hpp"
 #include "mabi_base_sensor_ros/ConversionTraits.hpp"
 
 
@@ -68,8 +68,8 @@ struct DiagnosedPublisher {
  */
 class ImuVn100 {
  public:
-  using IMUStateShm = mabi_base_sensor::MabiBaseIMUState;
-  using IMUStateRos = mabi_base_msgs::MabiBaseIMUState;
+  using sensorReadingShm = mabi_base_sensor::MabiBaseSensorReading;
+  using sensorReadingRos = mabi_base_msgs::MabiBaseSensorReading;
 
   static constexpr int kBaseImuRate = 800;
   static constexpr int kDefaultImuRate = 100;
@@ -151,8 +151,8 @@ class ImuVn100 {
   du::Updater updater_;
   DiagnosedPublisher pd_imu_, pd_mag_, pd_pres_, pd_temp_, pd_rpy_;
 
-  cosmo_ros::PublisherRosPtr<IMUStateShm, IMUStateRos, mabi_base_sensor_ros::ConversionTraits> pub_;
-  IMUStateShm IMUState_;
+  cosmo_ros::PublisherRosPtr<sensorReadingShm, sensorReadingRos, mabi_base_sensor_ros::ConversionTraits> pub_;
+  sensorReadingShm sensorReading_;
 
   void FixImuRate();
   void LoadParameters();
