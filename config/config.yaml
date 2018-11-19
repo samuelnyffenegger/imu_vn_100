@@ -1,5 +1,5 @@
 publishers:
-  mabi_base_IMU_readings:
-    topic: mabi_base_IMU_readings
+  mabi_base_sensor_reading:
+    topic: /mabi_base_sensor_reading
     queue_size: 1
     latch: false
