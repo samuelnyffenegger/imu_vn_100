@@ -466,16 +466,10 @@ void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
     RosQuaternionFromVnQuaternion(imu_msg.orientation, data.quaternion);
   }
 
-  sensorReading_.IMUState_.linear_acceleration_.x()  = imu_msg.linear_acceleration.x;
-  sensorReading_.IMUState_.linear_acceleration_.y()  = imu_msg.linear_acceleration.y;
-  sensorReading_.IMUState_.linear_acceleration_.z()  = imu_msg.linear_acceleration.z;
-  sensorReading_.IMUState_.angular_velocity_.x()     = imu_msg.angular_velocity.x;
-  sensorReading_.IMUState_.angular_velocity_.y()     = imu_msg.angular_velocity.y;
-  sensorReading_.IMUState_.angular_velocity_.z()     = imu_msg.angular_velocity.z;
-  sensorReading_.IMUState_.orientation_.w()          = imu_msg.orientation.w;
-  sensorReading_.IMUState_.orientation_.x()          = imu_msg.orientation.x;
-  sensorReading_.IMUState_.orientation_.y()          = imu_msg.orientation.y;
-  sensorReading_.IMUState_.orientation_.z()          = imu_msg.orientation.z;
+  kindr_ros::convertFromRosGeometryMsg(imu_msg.linear_acceleration, sensorReading_.IMUState_.linear_acceleration_);
+  kindr_ros::convertFromRosGeometryMsg(imu_msg.angular_velocity, sensorReading_.IMUState_.angular_velocity_);
+  kindr_ros::convertFromRosGeometryMsg(imu_msg.orientation, sensorReading_.IMUState_.orientation_);
+  // TODO Sam: covariance
   pd_imu_.Publish(imu_msg);
 
   if (enable_rpy_) {
@@ -484,9 +478,9 @@ void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
     rpy_msg.vector.z = data.ypr.yaw * M_PI/180.0;
     rpy_msg.vector.y = data.ypr.pitch * M_PI/180.0;
     rpy_msg.vector.x = data.ypr.roll * M_PI/180.0;
-    sensorReading_.IMUState_.rpy_.x() = rpy_msg.vector.x;
-    sensorReading_.IMUState_.rpy_.y() = rpy_msg.vector.y;
-    sensorReading_.IMUState_.rpy_.z() = rpy_msg.vector.z;
+//    sensorReading_.IMUState_.rpy_.x() = rpy_msg.vector.x;
+//    sensorReading_.IMUState_.rpy_.y() = rpy_msg.vector.y;
+//    sensorReading_.IMUState_.rpy_.z() = rpy_msg.vector.z;
     pd_rpy_.Publish(rpy_msg);
   }
 
@@ -494,9 +488,9 @@ void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
     sensor_msgs::MagneticField mag_msg;
     mag_msg.header = imu_msg.header;
     RosVector3FromVnVector3(mag_msg.magnetic_field, data.magnetic);
-    sensorReading_.IMUState_.magnetic_field_.x() = mag_msg.magnetic_field.x;
-    sensorReading_.IMUState_.magnetic_field_.y() = mag_msg.magnetic_field.y;
-    sensorReading_.IMUState_.magnetic_field_.z() = mag_msg.magnetic_field.z;
+//    sensorReading_.IMUState_.magnetic_field_.x() = mag_msg.magnetic_field.x;
+//    sensorReading_.IMUState_.magnetic_field_.y() = mag_msg.magnetic_field.y;
+//    sensorReading_.IMUState_.magnetic_field_.z() = mag_msg.magnetic_field.z;
     pd_mag_.Publish(mag_msg);
   }
 
@@ -504,7 +498,7 @@ void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
     sensor_msgs::FluidPressure pres_msg;
     pres_msg.header = imu_msg.header;
     pres_msg.fluid_pressure = data.pressure;
-    sensorReading_.IMUState_.fluid_pressure_ = data.pressure;
+    sensorReading_.IMUState_.fluid_pressure_ = static_cast<float> (data.pressure);
     pd_pres_.Publish(pres_msg);
   }
 
@@ -512,7 +506,7 @@ void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
     sensor_msgs::Temperature temp_msg;
     temp_msg.header = imu_msg.header;
     temp_msg.temperature = data.temperature;
-    sensorReading_.IMUState_.temperature_ = data.temperature;
+    sensorReading_.IMUState_.temperature_ = static_cast<float> (data.temperature);
     pd_temp_.Publish(temp_msg);
   }
 
