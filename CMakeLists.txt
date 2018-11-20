@@ -9,15 +9,15 @@ find_package(catkin REQUIRED COMPONENTS
   diagnostic_updater
   cosmo_ros
   mabi_base_msgs
-  mabi_base_sensor
-  mabi_base_sensor_ros
+  mabi_base_description
+  mabi_base_description_ros
 )
 find_package(Boost REQUIRED)
 
 catkin_package(
   INCLUDE_DIRS include vncpplib/include
   LIBRARIES imu_vn_100
-  CATKIN_DEPENDS diagnostic_updater roscpp sensor_msgs cosmo_ros mabi_base_msgs mabi_base_sensor mabi_base_sensor_ros
+  CATKIN_DEPENDS diagnostic_updater roscpp sensor_msgs cosmo_ros mabi_base_msgs mabi_base_description mabi_base_description_ros
   DEPENDS Boost
 )
 

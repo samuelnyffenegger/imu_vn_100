@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <imu_vn_100/imu_vn_100.h>
+#include <imu_vn_100/imu_vn_100.hpp>
 
 #include <geometry_msgs/Vector3Stamped.h>
 
@@ -177,7 +177,7 @@ void ImuVn100::CreateDiagnosedPublishers() {
   optionsPublisher->autoPublishRos_ = false;
   optionsPublisher->rosQueueSize_ = 1u;
   optionsPublisher->rosLatch_ = false;
-  pub_ = cosmo_ros::advertiseShmRos<sensorReadingShm, sensorReadingRos, mabi_base_sensor_ros::ConversionTraits> ("mabi_base_sensor_reading", optionsPublisher);
+  pub_ = cosmo_ros::advertiseShmRos<sensorReadingShm, sensorReadingRos, mabi_base_description_ros::ConversionTraits> ("mabi_base_sensor_reading", optionsPublisher);
 
 }
 

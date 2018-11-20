@@ -29,8 +29,8 @@
 
 #include "cosmo_ros/cosmo_ros.hpp"
 #include "mabi_base_msgs/MabiBaseSensorReading.h"
-#include "mabi_base_sensor/MabiBaseSensorReading.hpp"
-#include "mabi_base_sensor_ros/ConversionTraits.hpp"
+#include "mabi_base_description/MabiBaseSensorReading.hpp"
+#include "mabi_base_description_ros/ConversionTraits.hpp"
 
 
 namespace imu_vn_100 {
@@ -68,7 +68,7 @@ struct DiagnosedPublisher {
  */
 class ImuVn100 {
  public:
-  using sensorReadingShm = mabi_base_sensor::MabiBaseSensorReading;
+  using sensorReadingShm = mabi_base_description::MabiBaseSensorReading;
   using sensorReadingRos = mabi_base_msgs::MabiBaseSensorReading;
 
   static constexpr int kBaseImuRate = 800;
@@ -151,7 +151,7 @@ class ImuVn100 {
   du::Updater updater_;
   DiagnosedPublisher pd_imu_, pd_mag_, pd_pres_, pd_temp_, pd_rpy_;
 
-  cosmo_ros::PublisherRosPtr<sensorReadingShm, sensorReadingRos, mabi_base_sensor_ros::ConversionTraits> pub_;
+  cosmo_ros::PublisherRosPtr<sensorReadingShm, sensorReadingRos, mabi_base_description_ros::ConversionTraits> pub_;
   std::mutex mutexSensorReading_;
   sensorReadingShm sensorReading_;
 
