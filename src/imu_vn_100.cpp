@@ -174,7 +174,7 @@ void ImuVn100::CreateDiagnosedPublishers() {
 
   // COSMO publishers
   auto optionsPublisher = std::make_shared<cosmo_ros::PublisherRosOptions>("mabi_base_sensor_reading", pnh_);
-  optionsPublisher->autoPublishRos_ = true;
+  optionsPublisher->autoPublishRos_ = false;
   optionsPublisher->rosQueueSize_ = 1u;
   optionsPublisher->rosLatch_ = false;
   pub_ = cosmo_ros::advertiseShmRos<sensorReadingShm, sensorReadingRos, mabi_base_sensor_ros::ConversionTraits> ("mabi_base_sensor_reading", optionsPublisher);
