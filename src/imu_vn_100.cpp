@@ -466,10 +466,6 @@ void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
     RosQuaternionFromVnQuaternion(imu_msg.orientation, data.quaternion);
   }
 
-  kindr_ros::convertFromRosGeometryMsg(imu_msg.linear_acceleration, sensorReading_.IMUState_.linear_acceleration_);
-  kindr_ros::convertFromRosGeometryMsg(imu_msg.angular_velocity, sensorReading_.IMUState_.angular_velocity_);
-  kindr_ros::convertFromRosGeometryMsg(imu_msg.orientation, sensorReading_.IMUState_.orientation_);
-  // TODO Sam: covariance
   pd_imu_.Publish(imu_msg);
 
   if (enable_rpy_) {
@@ -498,7 +494,7 @@ void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
     sensor_msgs::FluidPressure pres_msg;
     pres_msg.header = imu_msg.header;
     pres_msg.fluid_pressure = data.pressure;
-    sensorReading_.IMUState_.fluid_pressure_ = static_cast<float> (data.pressure);
+//    sensorReading_.IMUState_.fluid_pressure_ = static_cast<float> (data.pressure);
     pd_pres_.Publish(pres_msg);
   }
 
@@ -506,13 +502,23 @@ void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
     sensor_msgs::Temperature temp_msg;
     temp_msg.header = imu_msg.header;
     temp_msg.temperature = data.temperature;
-    sensorReading_.IMUState_.temperature_ = static_cast<float> (data.temperature);
+//    sensorReading_.IMUState_.temperature_ = static_cast<float> (data.temperature);
     pd_temp_.Publish(temp_msg);
   }
 
-  // COSMO publishers
-  pub_->publish(sensorReading_);
-  pub_->sendRos();
+  // COSMO publisher
+  {
+    std::lock_guard<std::mutex> lock(mutexSensorReading_);
+
+    kindr_ros::convertFromRosGeometryMsg(imu_msg.linear_acceleration, sensorReading_.IMUState_.linear_acceleration_);
+    kindr_ros::convertFromRosGeometryMsg(imu_msg.angular_velocity, sensorReading_.IMUState_.angular_velocity_);
+    kindr_ros::convertFromRosGeometryMsg(imu_msg.orientation, sensorReading_.IMUState_.orientation_);
+
+    pub_->publish(sensorReading_);
+    pub_->sendRos();
+
+    MELO_INFO_STREAM(sensorReading_.IMUState_);
+  }
 
 
   sync_info_.Update(data.syncInCnt, imu_msg.header.stamp);
