@@ -510,14 +510,16 @@ void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
   {
     std::lock_guard<std::mutex> lock(mutexSensorReading_);
 
+//    sensorReading_.sequence_ = ;
+    sensorReading_.time_ = any_measurements::Time::Now();
     kindr_ros::convertFromRosGeometryMsg(imu_msg.linear_acceleration, sensorReading_.IMUState_.linear_acceleration_);
     kindr_ros::convertFromRosGeometryMsg(imu_msg.angular_velocity, sensorReading_.IMUState_.angular_velocity_);
     kindr_ros::convertFromRosGeometryMsg(imu_msg.orientation, sensorReading_.IMUState_.orientation_);
+    // TODO Sam: rpy, pressure, temperature, magnetic field
 
     pub_->publish(sensorReading_);
     pub_->sendRos();
 
-    MELO_INFO_STREAM(sensorReading_.IMUState_);
   }
 
 
