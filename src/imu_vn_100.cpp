@@ -474,9 +474,9 @@ void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
     rpy_msg.vector.z = data.ypr.yaw * M_PI/180.0;
     rpy_msg.vector.y = data.ypr.pitch * M_PI/180.0;
     rpy_msg.vector.x = data.ypr.roll * M_PI/180.0;
-//    sensorReading_.IMUState_.rpy_.x() = rpy_msg.vector.x;
-//    sensorReading_.IMUState_.rpy_.y() = rpy_msg.vector.y;
-//    sensorReading_.IMUState_.rpy_.z() = rpy_msg.vector.z;
+    sensorReading_.IMUState_.rpy_.x() = rpy_msg.vector.x;
+    sensorReading_.IMUState_.rpy_.y() = rpy_msg.vector.y;
+    sensorReading_.IMUState_.rpy_.z() = rpy_msg.vector.z;
     pd_rpy_.Publish(rpy_msg);
   }
 
@@ -484,9 +484,9 @@ void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
     sensor_msgs::MagneticField mag_msg;
     mag_msg.header = imu_msg.header;
     RosVector3FromVnVector3(mag_msg.magnetic_field, data.magnetic);
-//    sensorReading_.IMUState_.magnetic_field_.x() = mag_msg.magnetic_field.x;
-//    sensorReading_.IMUState_.magnetic_field_.y() = mag_msg.magnetic_field.y;
-//    sensorReading_.IMUState_.magnetic_field_.z() = mag_msg.magnetic_field.z;
+    sensorReading_.IMUState_.magnetic_field_.x() = mag_msg.magnetic_field.x;
+    sensorReading_.IMUState_.magnetic_field_.y() = mag_msg.magnetic_field.y;
+    sensorReading_.IMUState_.magnetic_field_.z() = mag_msg.magnetic_field.z;
     pd_mag_.Publish(mag_msg);
   }
 
@@ -494,7 +494,7 @@ void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
     sensor_msgs::FluidPressure pres_msg;
     pres_msg.header = imu_msg.header;
     pres_msg.fluid_pressure = data.pressure;
-//    sensorReading_.IMUState_.fluid_pressure_ = static_cast<float> (data.pressure);
+    sensorReading_.IMUState_.fluid_pressure_ = static_cast<float> (data.pressure);
     pd_pres_.Publish(pres_msg);
   }
 
@@ -502,26 +502,15 @@ void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
     sensor_msgs::Temperature temp_msg;
     temp_msg.header = imu_msg.header;
     temp_msg.temperature = data.temperature;
-//    sensorReading_.IMUState_.temperature_ = static_cast<float> (data.temperature);
+    sensorReading_.IMUState_.temperature_ = static_cast<float> (data.temperature);
     pd_temp_.Publish(temp_msg);
   }
 
   // COSMO publisher
-  {
-    std::lock_guard<std::mutex> lock(mutexSensorReading_);
-
-//    sensorReading_.sequence_ = ;
-    sensorReading_.time_ = any_measurements::Time::Now();
-    kindr_ros::convertFromRosGeometryMsg(imu_msg.linear_acceleration, sensorReading_.IMUState_.linear_acceleration_);
-    kindr_ros::convertFromRosGeometryMsg(imu_msg.angular_velocity, sensorReading_.IMUState_.angular_velocity_);
-    kindr_ros::convertFromRosGeometryMsg(imu_msg.orientation, sensorReading_.IMUState_.orientation_);
-    // TODO Sam: rpy, pressure, temperature, magnetic field
-
-    pub_->publish(sensorReading_);
-    pub_->sendRos();
-
-  }
-
+  sensorReading_.time_ = any_measurements::Time::Now();
+  any_measurements_ros::ConversionTraits<any_measurements::ImuWithCovariance, sensor_msgs::Imu>::convert(imu_msg, sensorReading_.IMUState_.imu_);
+  pub_->publish(sensorReading_);
+  pub_->sendRos();
 
   sync_info_.Update(data.syncInCnt, imu_msg.header.stamp);
 

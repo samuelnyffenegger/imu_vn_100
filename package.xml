@@ -15,6 +15,8 @@
   <depend>roscpp</depend>
   <depend>sensor_msgs</depend>
   <depend>cosmo_ros</depend>
+  <depend>any_measurements</depend>
+  <depend>any_measurements_ros</depend>
   <depend>mabi_base_msgs</depend>
   <depend>mabi_base_description</depend>
   <depend>mabi_base_description_ros</depend>

@@ -152,7 +152,6 @@ class ImuVn100 {
   DiagnosedPublisher pd_imu_, pd_mag_, pd_pres_, pd_temp_, pd_rpy_;
 
   cosmo_ros::PublisherRosPtr<sensorReadingShm, sensorReadingRos, mabi_base_description_ros::ConversionTraits> pub_;
-  std::mutex mutexSensorReading_;
   sensorReadingShm sensorReading_;
 
   void FixImuRate();
