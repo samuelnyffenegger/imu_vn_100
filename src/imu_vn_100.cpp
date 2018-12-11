@@ -148,6 +148,20 @@ void ImuVn100::LoadParameters() {
   pnh_.param("vpe/accel_tuning/adaptive_filtering/y", vpe_accel_adaptive_filtering_.c1, 4.0);
   pnh_.param("vpe/accel_tuning/adaptive_filtering/z", vpe_accel_adaptive_filtering_.c2, 4.0);
 
+
+#if 0
+  std::vector<double> zero_covariance(9, 1e-6);
+  std::vector<double> orientation_covariance_(9, 2.0);
+
+  pnh_.param("imu/covariance/orientation", orientation_covariance_, zero_covariance);
+
+  ROS_INFO("orientation covariacne: ");
+  for (int i = 0; i<9; ++i)
+    ROS_INFO_STREAM(static_cast<double> (orientation_covariance_[i]) << " ");
+#endif
+
+
+
   FixImuRate();
   sync_info_.FixSyncRate();
 }

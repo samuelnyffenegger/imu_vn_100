@@ -3,3 +3,8 @@ publishers:
     topic: /mabi_base_sensor_reading
     queue_size: 1
     latch: false
+
+covariance:
+  orientation: [3.2, 1.2, 0, 0, 1e-6, 0, 0, 0, 1e-6] # [1e-6, 0, 0, 0, 1e-6, 0, 0, 0, 1e-6]
+  linear_acceleration: [3.6e-3, 0, 0, 0, 3.6e-3, 0, 0, 0, 3.6e-3]
+  angular_velocity: [1e-5, 0, 0, 0, 1e-5, 0, 0, 0, 1e-5]
