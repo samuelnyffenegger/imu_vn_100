@@ -153,6 +153,10 @@ class ImuVn100 {
   std::vector<double> linear_acceleration_covariance_;
   std::vector<double> angular_velocity_covariance_;
 
+  std::vector<double> orientation_bias_;
+  std::vector<double> linear_acceleration_bias_;
+  std::vector<double> angular_velocity_bias_;
+
   du::Updater updater_;
   DiagnosedPublisher pd_imu_, pd_mag_, pd_pres_, pd_temp_, pd_rpy_;
 
@@ -166,6 +170,8 @@ class ImuVn100 {
 
   template<typename T, size_t N>
   void convert(const std::vector<T>& vector, boost::array<T, N>& array);
+
+  void ImuBiasCompensation(sensor_msgs::Imu& msg);
 
 };
 

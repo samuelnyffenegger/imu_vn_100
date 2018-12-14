@@ -152,6 +152,10 @@ void ImuVn100::LoadParameters() {
   linear_acceleration_covariance_ = param_io::param<std::vector<double>>(pnh_, "publishers/mabi_base_sensor_reading/covariance/linear_acceleration", std::vector<double>(3 * 3, 0.0));
   angular_velocity_covariance_ = param_io::param<std::vector<double>>(pnh_, "publishers/mabi_base_sensor_reading/covariance/angular_velocity", std::vector<double>(3 * 3, 0.0));
 
+  orientation_bias_ = param_io::param<std::vector<double>>(pnh_, "bias/orientation", std::vector<double>(4, 0.0));
+  linear_acceleration_bias_ = param_io::param<std::vector<double>>(pnh_, "bias/linear_acceleration", std::vector<double>(3, 0.0));
+  angular_velocity_bias_ = param_io::param<std::vector<double>>(pnh_, "bias/angular_velocity", std::vector<double>(3, 0.0));
+
   FixImuRate();
   sync_info_.FixSyncRate();
 }
@@ -522,6 +526,7 @@ void ImuVn100::PublishData(const VnDeviceCompositeData &data) {
 
   // COSMO publisher
   sensorReading_.time_ = any_measurements::Time::Now();
+  ImuBiasCompensation(imu_msg);
   any_measurements_ros::ConversionTraits<any_measurements::ImuWithCovariance, sensor_msgs::Imu>::convert(imu_msg, sensorReading_.IMUState_.imu_);
   pub_->publish(sensorReading_);
   pub_->sendRos();
@@ -529,6 +534,19 @@ void ImuVn100::PublishData(const VnDeviceCompositeData &data) {
   sync_info_.Update(data.syncInCnt, imu_msg.header.stamp);
 
   updater_.update();
+}
+
+void ImuVn100::ImuBiasCompensation(sensor_msgs::Imu& msg) {
+  msg.orientation.x -= orientation_bias_[0];
+  msg.orientation.y -= orientation_bias_[1];
+  msg.orientation.z -= orientation_bias_[2];
+  msg.orientation.w -= orientation_bias_[3];
+  msg.linear_acceleration.x -= linear_acceleration_bias_[0];
+  msg.linear_acceleration.y -= linear_acceleration_bias_[1];
+  msg.linear_acceleration.z -= linear_acceleration_bias_[2];
+  msg.angular_velocity.x -= angular_velocity_bias_[0];
+  msg.angular_velocity.y -= angular_velocity_bias_[1];
+  msg.angular_velocity.z -= angular_velocity_bias_[2];
 }
 
 void VnEnsure(const VnErrorCode &error_code) {
@@ -574,5 +592,6 @@ void RosQuaternionFromVnQuaternion(geometry_msgs::Quaternion &ros_quat,
   ros_quat.z = vn_quat.z;
   ros_quat.w = vn_quat.w;
 }
+
 
 }  //  namespace imu_vn_100
