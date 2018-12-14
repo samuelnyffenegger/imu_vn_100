@@ -27,6 +27,7 @@
 
 #include "vn100.h"
 
+#include "param_io/get_param.hpp"
 #include "cosmo_ros/cosmo_ros.hpp"
 #include "mabi_base_msgs/MabiBaseSensorReading.h"
 #include "mabi_base_description/MabiBaseSensorReading.hpp"
@@ -37,6 +38,9 @@ namespace imu_vn_100 {
 
 namespace du = diagnostic_updater;
 using TopicDiagnosticPtr = boost::shared_ptr<du::TopicDiagnostic>;
+using sensorReadingShm = mabi_base_description::MabiBaseSensorReading;
+using sensorReadingRos = mabi_base_msgs::MabiBaseSensorReading;
+
 
 // NOTE: there is a DiagnosedPublisher inside diagnostic_updater
 // but it does not have a default constructor thus we use this simple one
@@ -45,7 +49,7 @@ struct DiagnosedPublisher {
   ros::Publisher pub;
   TopicDiagnosticPtr diag;
 
-  template <typename MessageT>
+  template<typename MessageT>
   void Create(ros::NodeHandle& pnh, const std::string& topic,
               du::Updater& updater, double& rate) {
     pub = pnh.advertise<MessageT>(topic, 1);
@@ -55,7 +59,7 @@ struct DiagnosedPublisher {
                                                    time_param);
   }
 
-  template <typename MessageT>
+  template<typename MessageT>
   void Publish(const MessageT& message) {
     diag->tick(message.header.stamp);
     pub.publish(message);
@@ -68,9 +72,6 @@ struct DiagnosedPublisher {
  */
 class ImuVn100 {
  public:
-  using sensorReadingShm = mabi_base_description::MabiBaseSensorReading;
-  using sensorReadingRos = mabi_base_msgs::MabiBaseSensorReading;
-
   static constexpr int kBaseImuRate = 800;
   static constexpr int kDefaultImuRate = 100;
   static constexpr int kDefaultSyncOutRate = 20;
@@ -148,6 +149,10 @@ class ImuVn100 {
 
   SyncInfo sync_info_;
 
+  std::vector<double> orientation_covariance_;
+  std::vector<double> linear_acceleration_covariance_;
+  std::vector<double> angular_velocity_covariance_;
+
   du::Updater updater_;
   DiagnosedPublisher pd_imu_, pd_mag_, pd_pres_, pd_temp_, pd_rpy_;
 
@@ -157,6 +162,11 @@ class ImuVn100 {
   void FixImuRate();
   void LoadParameters();
   void CreateDiagnosedPublishers();
+//  void CovarianceConversion(const std::vector<double> &vec, boost::array<double, 9> &boost );
+
+  template<typename T, size_t N>
+  void convert(const std::vector<T>& vector, boost::array<T, N>& array);
+
 };
 
 // Just don't like type that is ALL CAP

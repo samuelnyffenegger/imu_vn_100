@@ -7,6 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
   diagnostic_updater
+  param_io
   cosmo_ros
   any_measurements
   any_measurements_ros
@@ -23,6 +24,7 @@ catkin_package(
   diagnostic_updater
   roscpp
   sensor_msgs
+  param_io
   cosmo_ros
   any_measurements
   any_measurements_ros
