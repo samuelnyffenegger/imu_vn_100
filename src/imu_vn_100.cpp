@@ -148,9 +148,9 @@ void ImuVn100::LoadParameters() {
   pnh_.param("vpe/accel_tuning/adaptive_filtering/y", vpe_accel_adaptive_filtering_.c1, 4.0);
   pnh_.param("vpe/accel_tuning/adaptive_filtering/z", vpe_accel_adaptive_filtering_.c2, 4.0);
 
-  orientation_covariance_ = param_io::param<std::vector<double>>(pnh_, "covariance/orientation", std::vector<double>(3 * 3, 0.0));
-  linear_acceleration_covariance_ = param_io::param<std::vector<double>>(pnh_, "covariance/linear_acceleration", std::vector<double>(3 * 3, 0.0));
-  angular_velocity_covariance_ = param_io::param<std::vector<double>>(pnh_, "covariance/angular_velocity", std::vector<double>(3 * 3, 0.0));
+  orientation_covariance_ = param_io::param<std::vector<double>>(pnh_, "publishers/mabi_base_sensor_reading/covariance/orientation", std::vector<double>(3 * 3, 0.0));
+  linear_acceleration_covariance_ = param_io::param<std::vector<double>>(pnh_, "publishers/mabi_base_sensor_reading/covariance/linear_acceleration", std::vector<double>(3 * 3, 0.0));
+  angular_velocity_covariance_ = param_io::param<std::vector<double>>(pnh_, "publishers/mabi_base_sensor_reading/covariance/angular_velocity", std::vector<double>(3 * 3, 0.0));
 
   FixImuRate();
   sync_info_.FixSyncRate();
