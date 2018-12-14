@@ -9,6 +9,6 @@ publishers:
       angular_velocity: [1.0e-5, 0.0, 0.0, 0.0, 1.0e-5, 0.0, 0.0, 0.0, 1.0e-5]
 
 bias:
-  orientation: [0.0 0.0 0.0 0.0]        # x y z w
-  linear_acceleration: [0.0 0.0 0.0]
-  angular_velocity: [0.0 0.0 0.0]
+  orientation: [0.0, 0.0, 0.0, 0.0]        # x y z w
+  linear_acceleration: [0.0, 0.0, 0.0]
+  angular_velocity: [0.0, 0.0, 0.0]
