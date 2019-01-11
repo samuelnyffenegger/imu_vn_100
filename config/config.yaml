@@ -1,0 +1,14 @@
+publishers:
+  mabi_base_sensor_reading:
+    topic: /mabi_base_sensor_reading
+    queue_size: 1
+    latch: false
+    covariance:
+      orientation: [1.0e-6, 0.0, 0.0, 0.0, 1.0e-6, 0.0, 0.0, 0.0, 1.0e-6]
+      linear_acceleration: [3.6e-3, 0.0, 0.0, 0.0, 3.6e-3, 0.0, 0.0, 0.0, 3.6e-3]
+      angular_velocity: [1.0e-5, 0.0, 0.0, 0.0, 1.0e-5, 0.0, 0.0, 0.0, 1.0e-5]
+
+bias:
+  orientation: [0.0, 0.0, 0.0, 0.0]        # x y z w
+  linear_acceleration: [0.0, 0.0, 0.0]
+  angular_velocity: [0.0038, -0.0042, -0.0141]

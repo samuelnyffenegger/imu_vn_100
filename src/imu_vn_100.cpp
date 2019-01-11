@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include <imu_vn_100/imu_vn_100.h>
+#include <imu_vn_100/imu_vn_100.hpp>
 
 #include <geometry_msgs/Vector3Stamped.h>
 
 namespace imu_vn_100 {
 
 // LESS HACK IS STILL HACK
-ImuVn100* imu_vn_100_ptr;
+ImuVn100 *imu_vn_100_ptr;
 
 using geometry_msgs::Vector3Stamped;
 
@@ -30,12 +30,12 @@ using sensor_msgs::MagneticField;
 using sensor_msgs::FluidPressure;
 using sensor_msgs::Temperature;
 
-void RosVector3FromVnVector3(geometry_msgs::Vector3& ros_vec3,
-                             const VnVector3& vn_vec3);
-void RosQuaternionFromVnQuaternion(geometry_msgs::Quaternion& ros_quat,
-                                   const VnQuaternion& vn_quat);
+void RosVector3FromVnVector3(geometry_msgs::Vector3 &ros_vec3,
+                             const VnVector3 &vn_vec3);
+void RosQuaternionFromVnQuaternion(geometry_msgs::Quaternion &ros_quat,
+                                   const VnQuaternion &vn_quat);
 
-void AsyncListener(void* sender, VnDeviceCompositeData* data) {
+void AsyncListener(void *sender, VnDeviceCompositeData *data) {
   imu_vn_100_ptr->PublishData(*data);
 }
 
@@ -44,7 +44,7 @@ constexpr int ImuVn100::kDefaultImuRate;
 constexpr int ImuVn100::kDefaultSyncOutRate;
 
 void ImuVn100::SyncInfo::Update(const unsigned sync_count,
-                                const ros::Time& sync_time) {
+                                const ros::Time &sync_time) {
   if (rate <= 0) return;
 
   if (count != sync_count) {
@@ -63,9 +63,9 @@ void ImuVn100::SyncInfo::FixSyncRate() {
       ROS_INFO("Set SYNC_OUT_RATE to %d", rate);
     }
     skip_count =
-        (std::floor(ImuVn100::kBaseImuRate / static_cast<double>(rate) +
-                    0.5f)) -
-        1;
+            (std::floor(ImuVn100::kBaseImuRate / static_cast<double>(rate) +
+                        0.5f)) -
+            1;
 
     if (pulse_width_us > 10000) {
       ROS_INFO("Sync out pulse with is over 10ms. Reset to 1ms");
@@ -77,11 +77,11 @@ void ImuVn100::SyncInfo::FixSyncRate() {
   ROS_INFO("Sync out rate: %d", rate);
 }
 
-ImuVn100::ImuVn100(const ros::NodeHandle& pnh)
-    : pnh_(pnh),
-      port_(std::string("/dev/ttyUSB0")),
-      baudrate_(921600),
-      frame_id_(std::string("imu")) {
+ImuVn100::ImuVn100(const ros::NodeHandle &pnh)
+        : pnh_(pnh),
+          port_(std::string("/dev/ttyUSB0")),
+          baudrate_(921600),
+          frame_id_(std::string("imu")) {
   Initialize();
   imu_vn_100_ptr = this;
 }
@@ -148,6 +148,14 @@ void ImuVn100::LoadParameters() {
   pnh_.param("vpe/accel_tuning/adaptive_filtering/y", vpe_accel_adaptive_filtering_.c1, 4.0);
   pnh_.param("vpe/accel_tuning/adaptive_filtering/z", vpe_accel_adaptive_filtering_.c2, 4.0);
 
+  orientation_covariance_ = param_io::param<std::vector<double>>(pnh_, "publishers/mabi_base_sensor_reading/covariance/orientation", std::vector<double>(3 * 3, 0.0));
+  linear_acceleration_covariance_ = param_io::param<std::vector<double>>(pnh_, "publishers/mabi_base_sensor_reading/covariance/linear_acceleration", std::vector<double>(3 * 3, 0.0));
+  angular_velocity_covariance_ = param_io::param<std::vector<double>>(pnh_, "publishers/mabi_base_sensor_reading/covariance/angular_velocity", std::vector<double>(3 * 3, 0.0));
+
+  orientation_bias_ = param_io::param<std::vector<double>>(pnh_, "bias/orientation", std::vector<double>(4, 0.0));
+  linear_acceleration_bias_ = param_io::param<std::vector<double>>(pnh_, "bias/linear_acceleration", std::vector<double>(3, 0.0));
+  angular_velocity_bias_ = param_io::param<std::vector<double>>(pnh_, "bias/angular_velocity", std::vector<double>(3, 0.0));
+
   FixImuRate();
   sync_info_.FixSyncRate();
 }
@@ -168,8 +176,18 @@ void ImuVn100::CreateDiagnosedPublishers() {
                                  imu_rate_double_);
   }
   if (enable_rpy_) {
-      pd_rpy_.Create<Vector3Stamped>(pnh_, "rpy", updater_, imu_rate_double_);
+    pd_rpy_.Create<Vector3Stamped>(pnh_, "rpy", updater_, imu_rate_double_);
   }
+
+
+  // COSMO publishers
+  auto optionsPublisher = std::make_shared<cosmo_ros::PublisherRosOptions>("mabi_base_sensor_reading", pnh_);
+  optionsPublisher->autoPublishRos_ = false;
+  optionsPublisher->rosQueueSize_ = 1u;
+  optionsPublisher->rosLatch_ = false;
+  pub_ = cosmo_ros::advertiseShmRos<sensorReadingShm, sensorReadingRos, mabi_base_description_ros::ConversionTraits>(
+          "mabi_base_sensor_reading", optionsPublisher);
+
 }
 
 void ImuVn100::Initialize() {
@@ -220,16 +238,16 @@ void ImuVn100::Initialize() {
   if (sync_info_.SyncEnabled()) {
     ROS_INFO("Set Synchronization Control Register (id:32).");
     VnEnsure(vn100_setSynchronizationControl(
-        &imu_, SYNCINMODE_COUNT, SYNCINEDGE_RISING, 0, SYNCOUTMODE_IMU_START,
-        SYNCOUTPOLARITY_POSITIVE, sync_info_.skip_count,
-        sync_info_.pulse_width_us * 1000, true));
+            &imu_, SYNCINMODE_COUNT, SYNCINEDGE_RISING, 0, SYNCOUTMODE_IMU_START,
+            SYNCOUTPOLARITY_POSITIVE, sync_info_.skip_count,
+            sync_info_.pulse_width_us * 1000, true));
 
     if (!binary_output_) {
       ROS_INFO("Set Communication Protocol Control Register (id:30).");
       VnEnsure(vn100_setCommunicationProtocolControl(
-        &imu_, SERIALCOUNT_SYNCOUT_COUNT, SERIALSTATUS_OFF, SPICOUNT_NONE,
-        SPISTATUS_OFF, SERIALCHECKSUM_8BIT, SPICHECKSUM_8BIT, ERRORMODE_SEND,
-        true));
+              &imu_, SERIALCOUNT_SYNCOUT_COUNT, SERIALSTATUS_OFF, SPICOUNT_NONE,
+              SPISTATUS_OFF, SERIALCHECKSUM_8BIT, SPICHECKSUM_8BIT, ERRORMODE_SEND,
+              true));
     }
   }
 
@@ -238,7 +256,7 @@ void ImuVn100::Initialize() {
   uint8_t vpe_filtering_mode;
   uint8_t vpe_tuning_mode;
   VnEnsure(vn100_getVpeControl(&imu_, &vpe_enable, &vpe_heading_mode,
-    &vpe_filtering_mode, &vpe_tuning_mode));
+                               &vpe_filtering_mode, &vpe_tuning_mode));
   ROS_INFO("Default VPE enable: %hhu", vpe_enable);
   ROS_INFO("Default VPE heading mode: %hhu", vpe_heading_mode);
   ROS_INFO("Default VPE filtering mode: %hhu", vpe_filtering_mode);
@@ -247,67 +265,67 @@ void ImuVn100::Initialize() {
       vpe_heading_mode != vpe_heading_mode_ ||
       vpe_filtering_mode != vpe_filtering_mode_ ||
       vpe_tuning_mode != vpe_tuning_mode_) {
-      vpe_enable = vpe_enable_;
-      vpe_heading_mode = vpe_heading_mode_;
-      vpe_filtering_mode = vpe_filtering_mode_;
-      vpe_tuning_mode = vpe_tuning_mode_;
-      ROS_INFO("Setting VPE enable: %hhu", vpe_enable);
-      ROS_INFO("Setting VPE heading mode: %hhu", vpe_heading_mode);
-      ROS_INFO("Setting VPE filtering mode: %hhu", vpe_filtering_mode);
-      ROS_INFO("Setting VPE tuning mode: %hhu", vpe_tuning_mode);
-      VnEnsure(vn100_setVpeControl(
-        &imu_,
-        vpe_enable,
-        vpe_heading_mode,
-        vpe_filtering_mode,
-        vpe_tuning_mode,
-        true));
+    vpe_enable = vpe_enable_;
+    vpe_heading_mode = vpe_heading_mode_;
+    vpe_filtering_mode = vpe_filtering_mode_;
+    vpe_tuning_mode = vpe_tuning_mode_;
+    ROS_INFO("Setting VPE enable: %hhu", vpe_enable);
+    ROS_INFO("Setting VPE heading mode: %hhu", vpe_heading_mode);
+    ROS_INFO("Setting VPE filtering mode: %hhu", vpe_filtering_mode);
+    ROS_INFO("Setting VPE tuning mode: %hhu", vpe_tuning_mode);
+    VnEnsure(vn100_setVpeControl(
+            &imu_,
+            vpe_enable,
+            vpe_heading_mode,
+            vpe_filtering_mode,
+            vpe_tuning_mode,
+            true));
   }
 
   if (vpe_enable_) {
-      ROS_INFO(
-         "Setting VPE MagnetometerBasicTuning BaseTuning (%f, %f, %f)",
-         vpe_mag_base_tuning_.c0,
-         vpe_mag_base_tuning_.c1,
-         vpe_mag_base_tuning_.c2);
-      ROS_INFO(
-        "Setting VPE MagnetometerBasicTuning AdaptiveTuning (%f, %f, %f)",
-        vpe_mag_adaptive_tuning_.c0,
-        vpe_mag_adaptive_tuning_.c1,
-        vpe_mag_adaptive_tuning_.c2);
-      ROS_INFO(
-        "Setting VPE MagnetometerBasicTuning AdaptiveFiltering (%f, %f, %f)",
-        vpe_mag_adaptive_filtering_.c0,
-        vpe_mag_adaptive_filtering_.c1,
-        vpe_mag_adaptive_filtering_.c2);
-      VnEnsure(vn100_setVpeMagnetometerBasicTuning(
-        &imu_,
-        vpe_mag_base_tuning_,
-        vpe_mag_adaptive_tuning_,
-        vpe_mag_adaptive_filtering_,
-        true));
+    ROS_INFO(
+            "Setting VPE MagnetometerBasicTuning BaseTuning (%f, %f, %f)",
+            vpe_mag_base_tuning_.c0,
+            vpe_mag_base_tuning_.c1,
+            vpe_mag_base_tuning_.c2);
+    ROS_INFO(
+            "Setting VPE MagnetometerBasicTuning AdaptiveTuning (%f, %f, %f)",
+            vpe_mag_adaptive_tuning_.c0,
+            vpe_mag_adaptive_tuning_.c1,
+            vpe_mag_adaptive_tuning_.c2);
+    ROS_INFO(
+            "Setting VPE MagnetometerBasicTuning AdaptiveFiltering (%f, %f, %f)",
+            vpe_mag_adaptive_filtering_.c0,
+            vpe_mag_adaptive_filtering_.c1,
+            vpe_mag_adaptive_filtering_.c2);
+    VnEnsure(vn100_setVpeMagnetometerBasicTuning(
+            &imu_,
+            vpe_mag_base_tuning_,
+            vpe_mag_adaptive_tuning_,
+            vpe_mag_adaptive_filtering_,
+            true));
 
-      ROS_INFO(
-       "Setting VPE AccelerometerBasicTuning BaseTuning (%f, %f, %f)",
-       vpe_accel_base_tuning_.c0,
-       vpe_accel_base_tuning_.c1,
-       vpe_accel_base_tuning_.c2);
     ROS_INFO(
-      "Setting VPE AccelerometerBasicTuning AdaptiveTuning (%f, %f, %f)",
-      vpe_accel_adaptive_tuning_.c0,
-      vpe_accel_adaptive_tuning_.c1,
-      vpe_accel_adaptive_tuning_.c2);
+            "Setting VPE AccelerometerBasicTuning BaseTuning (%f, %f, %f)",
+            vpe_accel_base_tuning_.c0,
+            vpe_accel_base_tuning_.c1,
+            vpe_accel_base_tuning_.c2);
     ROS_INFO(
-      "Setting VPE AccelerometerBasicTuning AdaptiveFiltering (%f, %f, %f)",
-      vpe_accel_adaptive_filtering_.c0,
-      vpe_accel_adaptive_filtering_.c1,
-      vpe_accel_adaptive_filtering_.c2);
-      VnEnsure(vn100_setVpeAccelerometerBasicTuning(
-        &imu_,
-        vpe_accel_base_tuning_,
-        vpe_accel_adaptive_tuning_,
-        vpe_accel_adaptive_filtering_,
-        true));
+            "Setting VPE AccelerometerBasicTuning AdaptiveTuning (%f, %f, %f)",
+            vpe_accel_adaptive_tuning_.c0,
+            vpe_accel_adaptive_tuning_.c1,
+            vpe_accel_adaptive_tuning_.c2);
+    ROS_INFO(
+            "Setting VPE AccelerometerBasicTuning AdaptiveFiltering (%f, %f, %f)",
+            vpe_accel_adaptive_filtering_.c0,
+            vpe_accel_adaptive_filtering_.c1,
+            vpe_accel_adaptive_filtering_.c2);
+    VnEnsure(vn100_setVpeAccelerometerBasicTuning(
+            &imu_,
+            vpe_accel_base_tuning_,
+            vpe_accel_adaptive_tuning_,
+            vpe_accel_adaptive_filtering_,
+            true));
   }
 
   CreateDiagnosedPublishers();
@@ -337,7 +355,7 @@ void ImuVn100::Stream(bool async) {
       uint16_t grp5 = BG5_NONE;
       std::list<std::string> sgrp5;
       if (imu_compensated_) {
-        grp1 |=  BG1_ACCEL | BG1_ANGULAR_RATE;
+        grp1 |= BG1_ACCEL | BG1_ANGULAR_RATE;
         sgrp1.push_back("BG1_ACCEL");
         sgrp1.push_back("BG1_ANGULAR_RATE");
         if (enable_mag_) {
@@ -345,7 +363,7 @@ void ImuVn100::Stream(bool async) {
           sgrp3.push_back("BG3_MAG");
         }
       } else {
-        grp1 |=  BG1_IMU;
+        grp1 |= BG1_IMU;
         sgrp1.push_back("BG1_IMU");
         if (enable_mag_) {
           grp3 |= BG3_UNCOMP_MAG;
@@ -353,19 +371,19 @@ void ImuVn100::Stream(bool async) {
         }
       }
       if (enable_temp_) {
-          grp3 |= BG3_TEMP;
-          sgrp3.push_back("BG3_TEMP");
+        grp3 |= BG3_TEMP;
+        sgrp3.push_back("BG3_TEMP");
       }
       if (enable_pres_) {
-          grp3 |= BG3_PRES;
-          sgrp3.push_back("BG3_PRES");
+        grp3 |= BG3_PRES;
+        sgrp3.push_back("BG3_PRES");
       }
       if (!sgrp1.empty()) {
         std::stringstream ss;
         std::copy(
-          sgrp1.begin(),
-          sgrp1.end(),
-          std::ostream_iterator<std::string>(ss, "|")
+                sgrp1.begin(),
+                sgrp1.end(),
+                std::ostream_iterator<std::string>(ss, "|")
         );
         std::string s = ss.str();
         s.pop_back();
@@ -374,9 +392,9 @@ void ImuVn100::Stream(bool async) {
       if (!sgrp3.empty()) {
         std::stringstream ss;
         std::copy(
-          sgrp3.begin(),
-          sgrp3.end(),
-          std::ostream_iterator<std::string>(ss, "|")
+                sgrp3.begin(),
+                sgrp3.end(),
+                std::ostream_iterator<std::string>(ss, "|")
         );
         std::string s = ss.str();
         s.pop_back();
@@ -385,20 +403,20 @@ void ImuVn100::Stream(bool async) {
       if (!sgrp5.empty()) {
         std::stringstream ss;
         std::copy(
-          sgrp5.begin(),
-          sgrp5.end(),
-          std::ostream_iterator<std::string>(ss, "|")
+                sgrp5.begin(),
+                sgrp5.end(),
+                std::ostream_iterator<std::string>(ss, "|")
         );
         std::string s = ss.str();
         s.pop_back();
         ROS_INFO("Streaming #5: %s", s.c_str());
       }
       VnEnsure(vn100_setBinaryOutput1Configuration(
-        &imu_,
-        binary_async_mode_,
-        kBaseImuRate / imu_rate_,
-        grp1, grp3, grp5,
-        true
+              &imu_,
+              binary_async_mode_,
+              kBaseImuRate / imu_rate_,
+              grp1, grp3, grp5,
+              true
       ));
     } else {
       // Set the ASCII output data type and data rate
@@ -437,10 +455,19 @@ void ImuVn100::Disconnect() {
   vn100_disconnect(&imu_);
 }
 
-void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
+template<typename T, size_t N>
+void ImuVn100::convert(const std::vector<T>& vector, boost::array<T, N>& array) {
+  assert(vector.size() == array.size());
+  std::copy(vector.begin(), vector.end(), array.begin());
+}
+
+void ImuVn100::PublishData(const VnDeviceCompositeData &data) {
   sensor_msgs::Imu imu_msg;
   imu_msg.header.stamp = ros::Time::now();
   imu_msg.header.frame_id = frame_id_;
+  convert<double, 9>(orientation_covariance_, imu_msg.orientation_covariance);
+  convert<double, 9>(linear_acceleration_covariance_, imu_msg.linear_acceleration_covariance);
+  convert<double, 9>(angular_velocity_covariance_, imu_msg.angular_velocity_covariance);
 
   if (imu_compensated_) {
     RosVector3FromVnVector3(imu_msg.linear_acceleration, data.acceleration);
@@ -456,14 +483,18 @@ void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
   if (binary_output_) {
     RosQuaternionFromVnQuaternion(imu_msg.orientation, data.quaternion);
   }
+
   pd_imu_.Publish(imu_msg);
 
   if (enable_rpy_) {
     Vector3Stamped rpy_msg;
-    rpy_msg.header= imu_msg.header;
-    rpy_msg.vector.z = data.ypr.yaw * M_PI/180.0;
-    rpy_msg.vector.y = data.ypr.pitch * M_PI/180.0;
-    rpy_msg.vector.x = data.ypr.roll * M_PI/180.0;
+    rpy_msg.header = imu_msg.header;
+    rpy_msg.vector.z = data.ypr.yaw * M_PI / 180.0;
+    rpy_msg.vector.y = data.ypr.pitch * M_PI / 180.0;
+    rpy_msg.vector.x = data.ypr.roll * M_PI / 180.0;
+    sensorReading_.IMUState_.rpy_.x() = rpy_msg.vector.x;
+    sensorReading_.IMUState_.rpy_.y() = rpy_msg.vector.y;
+    sensorReading_.IMUState_.rpy_.z() = rpy_msg.vector.z;
     pd_rpy_.Publish(rpy_msg);
   }
 
@@ -471,6 +502,9 @@ void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
     sensor_msgs::MagneticField mag_msg;
     mag_msg.header = imu_msg.header;
     RosVector3FromVnVector3(mag_msg.magnetic_field, data.magnetic);
+    sensorReading_.IMUState_.magnetic_field_.x() = mag_msg.magnetic_field.x;
+    sensorReading_.IMUState_.magnetic_field_.y() = mag_msg.magnetic_field.y;
+    sensorReading_.IMUState_.magnetic_field_.z() = mag_msg.magnetic_field.z;
     pd_mag_.Publish(mag_msg);
   }
 
@@ -478,6 +512,7 @@ void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
     sensor_msgs::FluidPressure pres_msg;
     pres_msg.header = imu_msg.header;
     pres_msg.fluid_pressure = data.pressure;
+    sensorReading_.IMUState_.fluid_pressure_ = static_cast<float> (data.pressure);
     pd_pres_.Publish(pres_msg);
   }
 
@@ -485,15 +520,37 @@ void ImuVn100::PublishData(const VnDeviceCompositeData& data) {
     sensor_msgs::Temperature temp_msg;
     temp_msg.header = imu_msg.header;
     temp_msg.temperature = data.temperature;
+    sensorReading_.IMUState_.temperature_ = static_cast<float> (data.temperature);
     pd_temp_.Publish(temp_msg);
   }
+
+  // COSMO publisher
+  sensorReading_.time_ = any_measurements::Time::Now();
+  sensorReading_.frame_id_ = mabi_base_description::FrameIdEnum::FRAME_IMU_LINK;
+  ImuBiasCompensation(imu_msg);
+  any_measurements_ros::ConversionTraits<any_measurements::ImuWithCovariance, sensor_msgs::Imu>::convert(imu_msg, sensorReading_.IMUState_.imu_);
+  pub_->publish(sensorReading_);
+  pub_->sendRos();
 
   sync_info_.Update(data.syncInCnt, imu_msg.header.stamp);
 
   updater_.update();
 }
 
-void VnEnsure(const VnErrorCode& error_code) {
+void ImuVn100::ImuBiasCompensation(sensor_msgs::Imu& msg) {
+  msg.orientation.x -= orientation_bias_[0];
+  msg.orientation.y -= orientation_bias_[1];
+  msg.orientation.z -= orientation_bias_[2];
+  msg.orientation.w -= orientation_bias_[3];
+  msg.linear_acceleration.x -= linear_acceleration_bias_[0];
+  msg.linear_acceleration.y -= linear_acceleration_bias_[1];
+  msg.linear_acceleration.z -= linear_acceleration_bias_[2];
+  msg.angular_velocity.x -= angular_velocity_bias_[0];
+  msg.angular_velocity.y -= angular_velocity_bias_[1];
+  msg.angular_velocity.z -= angular_velocity_bias_[2];
+}
+
+void VnEnsure(const VnErrorCode &error_code) {
   if (error_code == VNERR_NO_ERROR) return;
 
   switch (error_code) {
@@ -522,19 +579,20 @@ void VnEnsure(const VnErrorCode& error_code) {
   }
 }
 
-void RosVector3FromVnVector3(geometry_msgs::Vector3& ros_vec3,
-                             const VnVector3& vn_vec3) {
+void RosVector3FromVnVector3(geometry_msgs::Vector3 &ros_vec3,
+                             const VnVector3 &vn_vec3) {
   ros_vec3.x = vn_vec3.c0;
   ros_vec3.y = vn_vec3.c1;
   ros_vec3.z = vn_vec3.c2;
 }
 
-void RosQuaternionFromVnQuaternion(geometry_msgs::Quaternion& ros_quat,
-                                   const VnQuaternion& vn_quat) {
+void RosQuaternionFromVnQuaternion(geometry_msgs::Quaternion &ros_quat,
+                                   const VnQuaternion &vn_quat) {
   ros_quat.x = vn_quat.x;
   ros_quat.y = vn_quat.y;
   ros_quat.z = vn_quat.z;
   ros_quat.w = vn_quat.w;
 }
+
 
 }  //  namespace imu_vn_100

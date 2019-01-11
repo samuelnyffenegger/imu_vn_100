@@ -15,7 +15,7 @@
  */
 
 #include <ros/ros.h>
-#include <imu_vn_100/imu_vn_100.h>
+#include <imu_vn_100/imu_vn_100.hpp>
 
 using namespace imu_vn_100;
 
