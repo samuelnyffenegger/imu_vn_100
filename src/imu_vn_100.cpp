@@ -525,7 +525,7 @@ void ImuVn100::PublishData(const VnDeviceCompositeData &data) {
   }
 
   // COSMO publisher
-  sensorReading_.time_ = any_measurements::Time::Now();
+  sensorReading_.time_ = any_measurements::Time::NowWallClock();
   sensorReading_.frame_id_ = mabi_base_description::FrameIdEnum::FRAME_IMU_LINK;
   ImuBiasCompensation(imu_msg);
   any_measurements_ros::ConversionTraits<any_measurements::ImuWithCovariance, sensor_msgs::Imu>::convert(imu_msg, sensorReading_.IMUState_.imu_);
